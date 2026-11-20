@@ -1,0 +1,415 @@
+GOOGLE AI STUDIO — ADD FUNDS INTEGRATION REQUEST
+
+I already have an existing website. Do NOT rebuild it from scratch and do NOT change its current design, colors, navigation, login system, dashboard, or other features. Integrate the Add Funds system below into my existing project.
+
+GOAL
+Convert my Telegram Bot Business Famwise Add Funds flow into a website-based Add Funds feature.
+
+REQUIRED USER FLOW
+1. Logged-in user opens Add Funds.
+2. User enters an amount (minimum ₹1; allow up to 2 decimal places).
+3. Backend creates a Famwise payment order using the official documented create-order endpoint.
+4. Website displays the UPI QR generated from the returned upi_intent, exact amount, and order ID.
+5. User pays using their UPI app.
+6. Website checks payment status through the backend.
+7. Only after the backend verifies status === "paid" AND confirms amount/currency/order ownership, credit the logged-in user's wallet exactly once.
+8. Show success/pending/expired/error states and add a row to Deposit History.
+9. Add pagination to Deposit History.
+10. Admin can securely configure/rotate the Famwise API key in the admin panel. Do not expose the key to browser JavaScript.
+
+SECURITY / CORRECTNESS
+- The live API key that was previously pasted into chat must be revoked/rotated. Never reuse it.
+- Store the new API key only in server environment variables or a server-side secrets manager.
+- Never trust user_id, amount, order_id, payment status, or wallet balance supplied by the browser.
+- Use the authenticated session to determine the account receiving the credit.
+- Use a persistent database and an atomic transaction with a UNIQUE constraint on gateway order_id to prevent duplicate credits, even if multiple status checks/webhooks arrive simultaneously.
+- Verify the paid amount and currency against the original server-side order before crediting.
+- Do not credit on QR generation, redirect, screenshot, or client-side claim.
+- If Famwise supports signed webhooks, validate signatures. Otherwise poll the status endpoint server-side with rate limits/backoff.
+- Do not run infinite rapid polling. Use a reasonable interval and stop on paid/expired/terminal status.
+- Add server-side validation, rate limiting, HTTPS, CSRF/origin protection as appropriate, and safe error handling.
+- Do not log API keys or authorization headers.
+
+TELEGRAM CODE BEHAVIOR TO PORT
+A. Add Balance:
+- Ask user for deposit amount.
+- Minimum amount ₹1.
+- Then proceed to amount validation/order creation.
+
+B. Set Amount:
+- Reject blank, non-numeric, below ₹1, or more than 2 decimal places.
+- Save the pending amount on the server.
+- The original Telegram snippet was truncated after checking Bot.getProperty("famwise_key"), so do not invent the missing create-order request.
+
+C. Send QR:
+- Original gateway response fields used: res.order_id, res.upi_intent, res.amount.
+- Generate a QR from upi_intent and display amount/order ID.
+- Website should display QR inline rather than sending a Telegram photo.
+
+D. Check Payment:
+- Original status endpoint:
+  GET https://famwise.co/api/public/v1/payment-links/{order_id}
+- Authorization header:
+  Authorization: Bearer {FAMWISE_API_KEY}
+- The API key must be used server-side only.
+
+E. Payment Result:
+- Original statuses:
+  - "paid": verify amount/order and credit wallet once; record deposit history.
+  - "active": payment pending; allow another status check.
+  - "expired": mark order expired and let user create a new order.
+- The Telegram code used a per-order paid flag. Replace this with a database-level unique transaction/credit record.
+
+F. Deposit History:
+- Show user's own deposits only.
+- Include order ID, amount, status, created time, and credited time.
+- Add previous/next pagination.
+- Never expose another user's payment records.
+
+G. Admin API Key Setting:
+- Remove Telegram admin ID and Telegram chat ID logic.
+- Use the website's existing admin authentication/authorization.
+- Keep secrets server-side. If a browser form is used, submit to a protected backend endpoint that stores the secret securely; never return the secret to the browser.
+
+IMPORTANT API DOCUMENTATION GAP
+The supplied Telegram snippets do NOT include the complete Famwise create-payment-order endpoint, HTTP method, or request body field names. The status endpoint and response field names are available, but order creation cannot be safely guessed.
+
+Before implementing the create-order call:
+1. Inspect the official Famwise API documentation I provide.
+2. Identify the exact create-order URL, HTTP method, required headers, request body fields, and response schema.
+3. Implement only according to that documentation.
+4. If documentation is not available, build the UI/database/backend scaffolding and clearly tell me exactly which API details are still required. Do not fabricate an endpoint or field names.
+
+DELIVERABLE
+- Modify my existing project, not a separate unrelated demo.
+- Show me every changed/new file and its complete code.
+- Tell me exactly where to put environment variables and how to run/deploy.
+- Preserve all existing website features and styling.
+- Include database schema/migrations and explain how to configure them.
+- Include tests for duplicate payment callbacks/status checks and amount mismatch.
+- Do not claim automatic wallet credit works until the backend, database, and official create-order API are correctly configured.
+
+STARTER IMPLEMENTATION FILES
+The attached starter ZIP contains:
+- server.js
+- public/index.html
+- .env.example
+- package.json
+- README.md
+
+Use it only as a reference scaffold. Adapt it to my existing website stack and authentication/database rather than blindly replacing my project.
+
+
+========================================================================================
+FILE: package.json
+========================================================================================
+{
+  "name": "famwise-add-funds-starter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "dotenv": "^16.4.7", "express": "^4.21.2" }
+}
+
+========================================================================================
+FILE: .env.example
+========================================================================================
+PORT=3000
+
+# Keep secrets ONLY on the server. Never put the live key in browser JavaScript.
+FAMWISE_API_KEY=put_your_new_rotated_key_here
+FAMWISE_BASE_URL=https://famwise.co
+FAMWISE_CREATE_PATH=
+# Set this only after checking the official Famwise API documentation.
+# Example format: /api/public/v1/...
+FAMWISE_CREATE_METHOD=POST
+
+# Configure these according to the official "create payment link" documentation.
+# Do not guess field names or endpoints.
+FAMWISE_AMOUNT_FIELD=
+FAMWISE_CURRENCY_FIELD=
+FAMWISE_CURRENCY_VALUE=INR
+FAMWISE_CALLBACK_URL=
+
+
+========================================================================================
+FILE: server.js
+========================================================================================
+import "dotenv/config";
+import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
+
+const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+app.use(express.json({ limit: "32kb" }));
+app.use(express.static(path.join(__dirname, "public")));
+
+const API_KEY = process.env.FAMWISE_API_KEY;
+const BASE_URL = (process.env.FAMWISE_BASE_URL || "https://famwise.co").replace(/\/+$/, "");
+
+function jsonError(res, status, message) {
+  return res.status(status).json({ ok: false, error: message });
+}
+
+function validAmount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 1 && n <= 100000 && Math.round(n * 100) === n * 100;
+}
+
+// Demo in-memory order map. Replace with a persistent database before production.
+// Each order is credited at most once in this process; production must use a DB transaction + unique order_id.
+const orders = new Map();
+
+app.post("/api/add-funds/create", async (req, res) => {
+  if (!API_KEY) return jsonError(res, 503, "Payment gateway is not configured on the server.");
+
+  const amount = Number(req.body?.amount);
+  if (!validAmount(amount)) return jsonError(res, 400, "Enter a valid amount (minimum ₹1, up to 2 decimal places).");
+
+  const createPath = process.env.FAMWISE_CREATE_PATH;
+  const amountField = process.env.FAMWISE_AMOUNT_FIELD;
+  if (!createPath || !amountField) {
+    return jsonError(
+      res,
+      501,
+      "Famwise order-creation endpoint/field mapping is not configured. Add the exact values from official Famwise API documentation."
+    );
+  }
+
+  // Build the request only from documented field names. Never accept arbitrary URLs from the browser.
+  const payload = { [amountField]: amount };
+  if (process.env.FAMWISE_CURRENCY_FIELD) {
+    payload[process.env.FAMWISE_CURRENCY_FIELD] = process.env.FAMWISE_CURRENCY_VALUE || "INR";
+  }
+  if (process.env.FAMWISE_CALLBACK_URL) {
+    payload.callback_url = process.env.FAMWISE_CALLBACK_URL;
+  }
+
+  try {
+    const url = new URL(createPath, BASE_URL);
+    if (url.origin !== BASE_URL) return jsonError(res, 400, "Invalid configured gateway path.");
+
+    const gatewayResponse = await fetch(url, {
+      method: process.env.FAMWISE_CREATE_METHOD || "POST",
+      headers: {
+        "Authorization": `Bearer ${API_KEY}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await gatewayResponse.json().catch(() => ({}));
+    if (!gatewayResponse.ok) {
+      return jsonError(res, 502, data?.error?.message || "Payment gateway could not create an order.");
+    }
+
+    // These response properties match the fields used in the Telegram code.
+    if (!data.order_id || !data.upi_intent) {
+      return jsonError(res, 502, "Gateway response is missing order_id or upi_intent. Check the official API response format.");
+    }
+
+    orders.set(String(data.order_id), {
+      orderId: String(data.order_id),
+      amount: Number(data.amount ?? amount),
+      status: "pending",
+      credited: false,
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      ok: true,
+      orderId: String(data.order_id),
+      amount: Number(data.amount ?? amount),
+      upiIntent: String(data.upi_intent)
+    });
+  } catch {
+    jsonError(res, 502, "Could not reach the payment gateway.");
+  }
+});
+
+app.get("/api/add-funds/status/:orderId", async (req, res) => {
+  if (!API_KEY) return jsonError(res, 503, "Payment gateway is not configured on the server.");
+
+  const orderId = String(req.params.orderId || "");
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(orderId)) return jsonError(res, 400, "Invalid order ID.");
+
+  try {
+    const url = new URL(`/api/public/v1/payment-links/${encodeURIComponent(orderId)}`, BASE_URL);
+    const gatewayResponse = await fetch(url, {
+      headers: { "Authorization": `Bearer ${API_KEY}`, "Accept": "application/json" }
+    });
+    const data = await gatewayResponse.json().catch(() => ({}));
+    if (!gatewayResponse.ok) return jsonError(res, 502, data?.error?.message || "Could not verify payment.");
+
+    const order = orders.get(orderId);
+    const status = String(data.status || "unknown").toLowerCase();
+
+    // IMPORTANT: The starter does not credit a real wallet. A logged-in user ID,
+    // database transaction, and unique order constraint must be added before production.
+    if (order) order.status = status;
+
+    res.json({
+      ok: true,
+      orderId,
+      status,
+      amount: Number(data.amount ?? order?.amount ?? 0),
+      walletCreditApplied: false,
+      message: status === "paid"
+        ? "Payment verified. Connect this result to your authenticated wallet database before enabling credits."
+        : status === "active" ? "Payment is still pending." : status === "expired" ? "This payment order expired." : "Payment status received."
+    });
+  } catch {
+    jsonError(res, 502, "Could not reach the payment gateway.");
+  }
+});
+
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+const port = Number(process.env.PORT || 3000);
+app.listen(port, () => console.log(`Add Funds starter running on http://localhost:${port}`));
+
+
+========================================================================================
+FILE: public/index.html
+========================================================================================
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Funds</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f4f6ff;font:16px system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px}
+    .card{width:min(100%,440px);background:#141c31;border:1px solid #293653;border-radius:20px;padding:24px;box-shadow:0 18px 60px #0006}
+    h1{margin:0 0 8px;font-size:25px}.muted{color:#aab6d0;font-size:14px;line-height:1.5}
+    label{display:block;margin:22px 0 8px;font-weight:650}input{width:100%;padding:14px;border-radius:12px;border:1px solid #394968;background:#0d1528;color:white;font-size:17px}
+    button{width:100%;padding:14px;border:0;border-radius:12px;background:#5b7cfa;color:white;font-weight:750;font-size:16px;margin-top:14px}
+    button:disabled{opacity:.55}#status{margin-top:16px;white-space:pre-wrap;overflow-wrap:anywhere}.qr{display:none;margin:18px auto 0;max-width:260px;width:100%;background:white;padding:10px;border-radius:12px}
+    .order{font-size:13px;color:#c4cee4;overflow-wrap:anywhere}.note{border-left:3px solid #e6b85c;padding-left:10px;margin-top:18px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Add Funds</h1>
+    <p class="muted">Create a payment order and verify its status securely through the server.</p>
+    <form id="form">
+      <label for="amount">Deposit amount (₹)</label>
+      <input id="amount" type="number" min="1" max="100000" step="0.01" placeholder="Enter amount" required>
+      <button id="create" type="submit">Generate payment QR</button>
+    </form>
+    <img id="qr" class="qr" alt="UPI payment QR code">
+    <div id="order" class="order"></div>
+    <button id="check" type="button" hidden>Check payment status</button>
+    <div id="status" class="muted" role="status"></div>
+    <p class="muted note">Demo starter only: this package does not add wallet credits. Connect authenticated user accounts and a transactional database before accepting real payments.</p>
+  </main>
+<script>
+const form = document.querySelector("#form");
+const amountInput = document.querySelector("#amount");
+const createButton = document.querySelector("#create");
+const checkButton = document.querySelector("#check");
+const statusBox = document.querySelector("#status");
+const qr = document.querySelector("#qr");
+const orderBox = document.querySelector("#order");
+let currentOrderId = null;
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  statusBox.textContent = "Creating payment order…";
+  createButton.disabled = true;
+  qr.style.display = "none";
+  checkButton.hidden = true;
+  try {
+    const response = await fetch("/api/add-funds/create", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({amount: Number(amountInput.value)})
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Could not create order.");
+    currentOrderId = data.orderId;
+    // QR is generated locally in the browser from the UPI intent returned by the server.
+    qr.src = "https://quickchart.io/qr?text=" + encodeURIComponent(data.upiIntent) + "&size=800&margin=3&ecLevel=H";
+    qr.style.display = "block";
+    orderBox.textContent = `Order ID: ${data.orderId} · Amount: ₹${data.amount}`;
+    checkButton.hidden = false;
+    statusBox.textContent = "Scan the QR using your UPI app, pay the exact amount, then check status.";
+  } catch (error) {
+    statusBox.textContent = error.message;
+  } finally {
+    createButton.disabled = false;
+  }
+});
+
+checkButton.addEventListener("click", async () => {
+  if (!currentOrderId) return;
+  checkButton.disabled = true;
+  statusBox.textContent = "Checking payment…";
+  try {
+    const response = await fetch("/api/add-funds/status/" + encodeURIComponent(currentOrderId));
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "Verification failed.");
+    statusBox.textContent = `${data.status.toUpperCase()}\n${data.message}`;
+  } catch (error) {
+    statusBox.textContent = error.message;
+  } finally {
+    checkButton.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
+
+
+========================================================================================
+FILE: README.md
+========================================================================================
+# Famwise Add Funds — website starter
+
+This is a secure **integration scaffold**, not a production-ready wallet or complete payment integration.
+
+## What is included
+- Add amount form (minimum ₹1)
+- Server-side Famwise API key handling
+- Payment-order creation adapter (must be configured from official docs)
+- QR display from the `upi_intent` response
+- Payment status check using the status URL shown in your Telegram code:
+  `GET https://famwise.co/api/public/v1/payment-links/{order_id}`
+- No Telegram commands or Telegram chat IDs
+
+## Important: rotate the key you posted
+The live API key shared in chat should be revoked/rotated in the Famwise dashboard. Put the **new** key only in `.env`. Never paste it into `public/` files or share it in screenshots.
+
+## Run locally
+1. Install Node.js 18 or newer.
+2. Copy `.env.example` to `.env`.
+3. Put the newly rotated key in `FAMWISE_API_KEY`.
+4. Run `npm install`.
+5. Run `npm start`.
+6. Open `http://localhost:3000`.
+
+## Required before order creation works
+The Telegram code supplied includes the status-check endpoint and the response fields `order_id`, `upi_intent`, `amount`, but it does **not** include the create-payment request URL or request field names.
+
+Read the official Famwise API documentation and set:
+- `FAMWISE_CREATE_PATH`
+- `FAMWISE_AMOUNT_FIELD`
+- optionally `FAMWISE_CURRENCY_FIELD`
+- optionally `FAMWISE_CALLBACK_URL`
+
+Do not guess these values. The server deliberately returns a clear configuration error until they are supplied.
+
+## Required before production wallet credits
+This starter intentionally does **not** credit a wallet. To safely enable real credits, add:
+- authenticated website users (never trust a user ID sent by the browser)
+- a persistent database for orders and wallet balances
+- a database transaction and unique constraint on `order_id` so one payment can only credit once
+- server-side verification of the paid amount and currency
+- verified webhook signature handling if Famwise supports webhooks; otherwise controlled server-side polling
+- rate limiting, CSRF/origin protections, logging without secrets, and HTTPS
+
+Do not treat a browser redirect or QR scan as proof of payment. Only a verified `paid` status from the gateway can trigger a wallet credit.

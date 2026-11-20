@@ -1,0 +1,6 @@
+{
+  "name": "KAKAROT GLORY PRO",
+  "description": "KAKAROT GLORY PRO — Automated Clan Glory Group Management, Credits, Coupons & Admin Control Panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

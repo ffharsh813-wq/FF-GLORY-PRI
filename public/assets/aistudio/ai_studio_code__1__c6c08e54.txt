@@ -1,0 +1,135 @@
+PROJECT: KAKAROT GLORY PRO — COMPLETE FULL-STACK WEBSITE (EXACT SCREENSHOT UI + BACKEND + PERSISTENT DATABASE + FFGLORY API + UNIVERSAL HOSTING SOURCE ZIP)
+
+Build a complete, production-ready full-stack web application named "KAKAROT GLORY PRO" with:
+- Frontend: React + Vite + Tailwind CSS (mobile-first dark luxury panel matching the exact layout below, centered max-width 600px on desktop)
+- Backend: Node.js + Express REST API server (serves `/api/*` + built frontend + SPA fallback for `/admin`, listening on `process.env.PORT`)
+- Persistent Database: Firebase Firestore (with strict server-side verification / security rules) OR PostgreSQL/SQLite persistence layer so ALL users, balances, groups, coupons, transactions, QR codes, provider config, and website settings remain permanently saved across restarts and deployments.
+- Hosting Ready: Complete exportable source-code ZIP compatible with ANY hosting provider (Hostinger, Render, Railway, VPS, cPanel Node.js, Cloud Run — do NOT couple to Netlify).
+
+====================================================================
+1. EXACT COLOR PALETTE, TYPOGRAPHY & VISUAL SYSTEM
+====================================================================
+- Main Background (Obsidian Black): #0A0A0A
+- Elevated Card Surface: #131314 (border: 1px solid #262626, rounded-2xl)
+- Secondary Elevated / Icon Boxes: #1A1A1C
+- Input Surface: #111112 (border: 1px solid #262626)
+- Champagne Gold (Primary CTA & Highlights): #D9C598 (border: #4D3D23, active tint: rgba(217,197,152,0.14))
+- Emerald (Sign Up, Redeem, Start, Approve, Live Status): #10B981 (dark box bg: #07221B, border: #0D4B3A)
+- Crimson (Delete, Reject, Error): #EF4444 (dark box bg: #291214, border: #5E1E22)
+- Amber (Restart, Maintenance Alert, Pending): #F59E0B
+- Top Credit Pill (Blue): bg #122138, border #243C61, accent #60A5FA
+- Text Hierarchy: Primary #FFFFFF, Secondary #A1A1AA, Muted #71717A
+- Typography:
+  - UI & Headings: Plus Jakarta Sans
+  - Monospace (Group IDs, Clan IDs, UTRs, Credits, Coupon Codes, Timestamps): JetBrains Mono
+
+====================================================================
+2. EXACT SCREENS & FUNCTIONS (MATCHING ALL 8 UI SCREENS)
+====================================================================
+A) AUTHENTICATION SCREEN (Screen 1 & Screen 2):
+- Centered dark card with rounded Champagne Gold lightning icon badge at top.
+- Segmented Toggle: "Sign In" (active Champagne Gold #D9C598) | "Sign Up" (active Emerald #10B981).
+- Sign In View: "Welcome Back" — "Sign in to <Live Website Name> panel", Username input, Password input, full-width Champagne Gold "Sign In" button, plus optional Google Sign-In.
+- Sign Up View: "Create Account" — "Join <Live Website Name> panel", Green "Open Registration — No invitation code required - create your account now!" banner (switches automatically to Registration Closed notice if Admin turns Registration OFF), Username input ("Lowercase letters, numbers, and underscore only"), Password ("Minimum 6 characters"), Confirm Password. Every new user starts with 0 Basic & 0 Premium credits.
+
+B) PERSISTENT TOP BAR & 6-TAB BOTTOM NAVIGATION:
+- Top Bar:
+  - Left: Brand Crest Logo + Live Website Name + Blue Credit Pill ("<X> Basic credits [+]" + "<Y>P" badge if Premium > 0). Clicking the Credit Pill / [+] opens the **Add Fund Modal**.
+  - Right: Active Region Flag, Inbox Mail icon with unread badge count, Notification Bell with live emerald dot, and Circular User Avatar Dropdown (Username, Website Name, Account Settings, Sign Out, and "/admin" link visible ONLY to authorized Admins).
+- Bottom Navigation (6 tabs): Home | Transactions | Coupons | History | Archive | Account.
+
+C) TAB 1 — HOME (Screens 3, 4 & 5):
+- Live Announcement Banner (synced from Admin Website Settings) & Maintenance Mode notice.
+- "Launch New Group" Card:
+  - "ACCOUNTS REGION" searchable dropdown ("Find a region...") with flags, region names, tier, and live prices from `GET /api/pricing`: Bangladesh, Europe, India, Indonesia, Middle East (Premium), North America, Pakistan, Singapore, United States (US), Vietnam.
+  - Displays: `Cost: 1 Basic credit • $1.00` (or `1 Premium credit • $3.00`), Extend availability indicator (`Extend available` / `Extend not available in this region`), and region maintenance warning banner when applicable.
+  - "CLAN ID" input + full-width Champagne Gold CTA: "⚡ Start Group (1 Basic Credit)" (or Premium).
+- "My Active Groups" Card:
+  - Header with archive icon badge, `"My Active Groups"` + count pill, `"Refresh"` button, `"Groups updated just now"`, `"Active groups · capacity <used> / <max_groups>"` progress bar.
+  - Empty state (`No active groups yet — Launch a new group to get started`) OR active group cards showing Group ID, Clan ID, Region, Tier, Status pill (`running`/`stopped`), Bot Count, Glory Earned, Uptime, and action buttons: Restart, Stop, Delete (with confirmation), Refund Credit, Get Glory, and Squad Info modal.
+
+D) TAB 2 — TRANSACTIONS & ADD FUND MODAL (Screen 6):
+- "Transaction History" card with clipboard icon, `"Refresh"` button, and `"+ Add Fund"` button.
+- Displays all user transactions (`add_fund`, `admin_credit`, `group_launch`, `group_refund`, `coupon_create`, `coupon_redeem`, `coupon_cancel`) with status badges (`approved`, `pending`, `refunded`, `cancelled`, `failed`), UTR/Order ID, signed Basic/Premium deltas, and "Cancel" button for pending transactions.
+- **Add Fund Modal** (opened from TopBar [+] pill or "+ Add Fund" button):
+  - Displays Admin-saved **Payment QR Code** image + **"Save QR to Device"** (downloads PNG) + copyable **UPI / Wallet ID** + Basic/Premium rate labels + payment instructions.
+  - User selects Basic or Premium, picks preset (+1, +5, +10, +25, +50) or custom credit quantity, enters **UTR / Payment Transaction ID** + optional note, and submits a `pending` Add Fund request (users can cancel while pending, NEVER self-approve).
+
+E) TAB 3 — COUPONS (Screen 7):
+- "Redeem a Coupon" Card: `"Enter a coupon code to receive credits"`, monospace `"XXXX-XXXX-XXXX"` input, full-width Emerald `"✓ Redeem"` button.
+- "Create a Coupon" Card: Basic (up to 100) / Premium (up to 20) tier switch, `-` `[ 0 ]` `+` stepper, `"Balance after creation"` live preview, Champagne Gold `"Generate Coupon"` button.
+- "My Created Coupons" (with Cancel & Refund for active coupons) + "Redeemed Coupons" lists.
+
+F) TAB 4 — HISTORY (Screen 8):
+- "Group History" Card: Clock icon, total events badge, `"Refresh"` button.
+- Top Summary Counters Row: `Launches` (emerald), `Stops` (amber), `Deletes` (crimson), `Refunds` (blue), `Groups` (white).
+- Subtitle: `"Newest first · Matching colors and connecting lines show events from the same group."`
+- Vertical color-coded connected timeline showing action label (`Started`, `Stopped`, `Restarted`, `Deleted`, `Refunded`, `replace`), pill `Group #<id>`, timestamp, shield `Clan <id>`, flag + full delta summary (`Refunded 1 basic credit. Region: ... Uptime: ... Glory: ... Credits: Basic X -> Y, Premium A -> B`), and `"Recorded runtime · <duration>"` pill.
+
+G) TAB 5 — ARCHIVE & TAB 6 — ACCOUNT:
+- Archive: Stopped, deleted, failed, and refunded groups.
+- Account: Editable Username, Wallet Balances + quick Add Fund button, Immutable Credit Audit Ledger, and "/admin" entry for Super Admin.
+
+====================================================================
+3. FULL DOCUMENTED FFGLORY PROVIDER API (https://ffglory.pro)
+====================================================================
+ALL calls to `https://ffglory.pro` MUST run strictly on the Node.js/Express backend server (NEVER expose API keys or passwords in frontend JS).
+Authentication Rules:
+- Send `api_key` query param (`PROVIDER_API_KEY`) AND `x-api-key` header (`PROVIDER_MASTER_KEY`), EXCEPT:
+  - `GET /api/pricing` (public, no keys required)
+  - `POST /api/auth/signup` (`x-api-key` header only; skips CAPTCHA)
+Implement ALL 18 documented endpoints & actions:
+1. `GET /api/auth/me` -> Live provider username, role, `basic_credits`, `premium_credits`, `max_groups`
+2. `POST /api/auth/signup` -> `{ username, password }` (handles HTTP 409)
+3. `GET /api/pricing` -> `basic_credit_usd`, `premium_credit_usd`, `regions[]` (`id`, `region_name`, `region_code`, `tier`, `enabled`)
+4. `POST /api/client/auto-clan-group` -> `{ region, clan_id }` (returns `success`, `group_id`, `bot_count`; handles 402/403/409)
+5. `GET /api/client/my-groups` -> Active groups (`group_id`, `clan_id`, `region`, `status`, `container_count`, `running_count`, `uptime`)
+6. `POST /api/client/group-action` -> `{ action, group_id }` for `"restart"`, `"stop"`, `"delete"` (permanent), `"get-glory"`, `"get-clan-info"`
+7. `POST /api/client/create-coupon` -> `{ basic_credits (0-100), premium_credits (0-20) }` (min 1 total, max 100 active)
+8. `GET /api/client/my-coupons`
+9. `GET /api/client/redeemed-coupons`
+10. `POST /api/client/redeem-coupon` -> `{ code }` (`XXXX-XXXX-XXXX`, rate limit 5 attempts / 60s)
+11. `POST /api/client/cancel-coupon` -> `{ code }` (active coupons only; refunds credits)
+12. `GET /api/client/transactions` (last 50)
+13. `POST /api/client/cancel-transaction` -> `{ transaction_id }`
+14. `GET /api/client/group-history` (with `glory_snapshots[]`)
+15. `GET /api/client/glory-progression?group_id=X`
+16. `GET /api/client/activity-log` (last 200 events: `start`, `stop`, `delete`, `restart`, `refund`)
+17. `GET /api/client/notifications` (one-time read; store fetched notifications in DB so users don't lose them)
+18. Error Handling (`400`, `401`, `402`, `403`, `404`, `409`, `429`): Surface real provider errors only. Before launching a group, atomically deduct 1 website credit in the database; if the provider call fails, automatically refund 1 credit atomically and write a sanitized log entry to `api_logs` (without exposing keys).
+
+====================================================================
+4. PROTECTED ADMIN PANEL (/admin) & LIVE WEBSITE SYNC
+====================================================================
+- Route `/admin`: Protected Super Admin gate.
+  - Authorized Admin Email: `ffharsh813@gmail.com` (via `ADMIN_EMAIL` env var).
+  - Password verified strictly on backend against `ADMIN_PASSWORD` env var (or salted bcrypt/SHA-256 hash stored in database once updated inside `/admin`). Never hardcode password in frontend files.
+- Live Instant Sync Rule:
+  - EVERY change made by Admin in `/admin` saves permanently to the database AND takes effect immediately across the live website for all users without redeploying:
+    1. **Dashboard Overview:** Total Users, Active Users, Total Credits, Total Transactions, Active Groups, Live FFGlory Provider Balance (`/api/auth/me`), Connection Status, API Error Logs count.
+    2. **Complete User & Unlimited Credit Control:** Search users, open user profile, quick presets (`+100`, `+500`, `+1,000`, `+5,000`) + **ANY custom numeric credit amount**, Deduct Credits, Set Exact Basic/Premium Credits, Suspend/Activate user, Set Max Groups — all inside atomic transactions logging Admin ID/email, timestamp, and note in the immutable `credit_ledger`.
+    3. **Add Fund Approval Queue & QR Code Manager:**
+       - Approve (atomically checks `pending`, credits user, updates transaction to `approved`, writes audit ledger) or Reject pending Add Fund requests.
+       - Upload QR image from device, preview QR, Save/Download QR PNG back to device, Clear QR, edit UPI ID / QR URL / Basic & Premium Rate Labels / Payment Instructions / Add Fund ON-OFF toggle.
+    4. **Website Settings (Live):** Website Name (default `KAKAROT GLORY PRO`), Website Title, Description, Logo URL/upload, Announcement Banner, Registration Enabled ON/OFF, Maintenance Mode ON/OFF.
+    5. **Provider Configuration (Admin-only encrypted/server DB + env fallback):** Edit & save Provider API URL (`https://ffglory.pro`), Provider API Key, Provider Master Key, Provider Username, Provider Password, run Live Connection Test (`/api/auth/me`), and view API Error Logs (`api_logs`).
+    6. **Group, Coupon & Transaction Management** + **Admin Password Change**.
+
+====================================================================
+5. UNIVERSAL HOSTING SOURCE ZIP STRUCTURE
+====================================================================
+Deliver a clean, self-contained repository that builds and runs on ANY hosting platform via `npm install && npm run build && npm start`:
+- `/package.json` & `/README.md` (Deployment steps for Hostinger, Render, Railway, VPS, cPanel, Cloud Run)
+- `/.env.example`:
+  PORT=3000
+  PROVIDER_API_URL=https://ffglory.pro
+  PROVIDER_API_KEY=
+  PROVIDER_MASTER_KEY=
+  PROVIDER_USERNAME=
+  PROVIDER_PASSWORD=
+  ADMIN_EMAIL=ffharsh813@gmail.com
+  ADMIN_PASSWORD=
+  SESSION_SECRET=
+  DATABASE_URL=
+- `/server/` (`index.js`, `db/`, `middleware/auth.js`, `routes/auth.js`, `routes/provider.js`, `routes/funds.js`, `routes/admin.js`, `routes/settings.js`)
+- `/client/` (`src/theme/`, `src/pages/`, `src/components/`, `src/api/`)

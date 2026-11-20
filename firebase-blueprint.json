@@ -1,0 +1,556 @@
+{
+  "entities": {
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Dynamic website branding and operational configuration controlled by Super Admin",
+      "type": "object",
+      "properties": {
+        "websiteName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Public brand name shown across header, login, signup, dashboard, and admin panel"
+        },
+        "websiteLogo": {
+          "type": "string",
+          "maxLength": 500000,
+          "description": "URL or data URI for the website emblem logo"
+        },
+        "websiteTitle": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Browser document title"
+        },
+        "websiteDescription": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Meta description"
+        },
+        "websiteAnnouncement": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional banner announcement"
+        },
+        "registrationEnabled": {
+          "type": "boolean",
+          "description": "Whether new user signups are open"
+        },
+        "maintenanceMode": {
+          "type": "boolean",
+          "description": "Whether non-admin dashboard access is paused for maintenance"
+        },
+        "websiteNotificationsEnabled": {
+          "type": "boolean",
+          "description": "Whether notification polling and alerts are enabled"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128
+        }
+      },
+      "required": ["websiteName", "registrationEnabled", "maintenanceMode", "websiteNotificationsEnabled", "updatedAt"]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "User account balances, role, and non-PII profile attributes",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 20,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"]
+        },
+        "basicCredits": {
+          "type": "number"
+        },
+        "premiumCredits": {
+          "type": "number"
+        },
+        "walletBalance": {
+          "type": "number"
+        },
+        "maxGroups": {
+          "type": "number"
+        },
+        "blocked": {
+          "type": "boolean"
+        },
+        "language": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "username", "role", "basicCredits", "premiumCredits", "maxGroups", "blocked", "createdAt", "updatedAt"]
+    },
+    "UserPrivateProfile": {
+      "title": "UserPrivateProfile",
+      "description": "Isolated user PII such as email address",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Authorized administrator role registry",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "role": {
+          "type": "string",
+          "enum": ["superadmin", "admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "GroupRecord": {
+      "title": "GroupRecord",
+      "description": "Clan glory group state and telemetry record",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "clanId": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "regionName": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["basic", "premium"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["running", "stopped", "archived", "deleted", "refunded"]
+        },
+        "containerCount": {
+          "type": "number"
+        },
+        "runningCount": {
+          "type": "number"
+        },
+        "gloryFarmed": {
+          "type": "number"
+        },
+        "uptime": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "archived": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["groupId", "userId", "clanId", "region", "tier", "status", "archived", "createdAt", "updatedAt"]
+    },
+    "TransactionRecord": {
+      "title": "TransactionRecord",
+      "description": "Credit ledger transaction entry",
+      "type": "object",
+      "properties": {
+        "transactionId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "orderId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "type": {
+          "type": "string",
+          "enum": ["purchase", "deduction", "refund", "coupon_redeem", "coupon_create", "coupon_cancel", "admin_add", "admin_deduct", "admin_set", "deposit", "wallet_spend"]
+        },
+        "basicCredits": {
+          "type": "number"
+        },
+        "premiumCredits": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "completed", "cancelled", "failed"]
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["transactionId", "userId", "type", "basicCredits", "premiumCredits", "status", "createdAt", "updatedAt"]
+    },
+    "CouponRecord": {
+      "title": "CouponRecord",
+      "description": "Redeemable credit coupon",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "basicCredits": {
+          "type": "number"
+        },
+        "premiumCredits": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "redeemed", "cancelled", "disabled", "expired"]
+        },
+        "createdByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdByUsername": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "redeemedByUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "redeemedByUsername": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "usageLimit": {
+          "type": "number"
+        },
+        "usedCount": {
+          "type": "number"
+        },
+        "expiresAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["code", "basicCredits", "premiumCredits", "status", "createdByUid", "usageLimit", "usedCount", "createdAt", "updatedAt"]
+    },
+    "ActivityLogRecord": {
+      "title": "ActivityLogRecord",
+      "description": "Group and credit lifecycle history event",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "groupId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "clanId": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "action": {
+          "type": "string",
+          "enum": ["start", "stop", "delete", "restart", "refund", "replace", "credit_add", "credit_deduct"]
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "runtimeLabel": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "action", "details", "createdAt"]
+    },
+    "ApiLogRecord": {
+      "title": "ApiLogRecord",
+      "description": "Admin-only API operation and error logs (never stores credentials)",
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "method": {
+          "type": "string",
+          "maxLength": 10
+        },
+        "statusCode": {
+          "type": "number"
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "latencyMs": {
+          "type": "number"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["endpoint", "method", "statusCode", "success", "createdAt"]
+    },
+    "DepositRecord": {
+      "title": "DepositRecord",
+      "description": "Famwise UPI deposit order with unique orderId and atomic wallet credit flag",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paid", "expired", "failed"]
+        },
+        "credited": {
+          "type": "boolean"
+        },
+        "creditedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "upiId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["orderId", "userId", "amount", "currency", "status", "credited", "createdAt", "updatedAt"]
+    },
+    "YouTubeVideo": {
+      "title": "YouTubeVideo",
+      "description": "Admin-managed YouTube video showcase and tutorial entries synced in real time",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "videoId": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "channelTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "published": {
+          "type": "boolean"
+        },
+        "order": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "videoId", "url", "title", "thumbnailUrl", "published", "order", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SiteSettings" },
+      "description": "Global dynamic website settings (doc ID: site)"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "User account state and balances"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateProfile" },
+      "description": "Isolated PII subcollection for user email"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Authorized Super Admin and Admin registry"
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/GroupRecord" },
+      "description": "Active, stopped, and archived glory groups"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/TransactionRecord" },
+      "description": "Credit ledger transactions"
+    },
+    "/deposits/{orderId}": {
+      "schema": { "$ref": "#/entities/DepositRecord" },
+      "description": "Famwise UPI deposit orders (keyed uniquely by orderId)"
+    },
+    "/coupons/{couponCode}": {
+      "schema": { "$ref": "#/entities/CouponRecord" },
+      "description": "Shareable and admin-issued credit coupons"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLogRecord" },
+      "description": "User group and credit operation timeline"
+    },
+    "/api_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ApiLogRecord" },
+      "description": "Admin-only API operation and error logs"
+    },
+    "/youtube_videos/{videoId}": {
+      "schema": { "$ref": "#/entities/YouTubeVideo" },
+      "description": "Admin-managed YouTube videos rendered in real time"
+    }
+  }
+}

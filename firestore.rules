@@ -1,0 +1,393 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isSuperAdminEmail() {
+      return isEmailVerified() && (
+        request.auth.token.email == 'kaakru2@gmail.com' ||
+        request.auth.token.email == 'ffharsh813@gmail.com'
+      );
+    }
+
+    function isAdmin() {
+      return isSuperAdminEmail() || (
+        isEmailVerified() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Entity Validators
+    function isValidSiteSettings(data) {
+      return data.keys().hasAll(['websiteName', 'registrationEnabled', 'maintenanceMode', 'websiteNotificationsEnabled', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'websiteName', 'websiteLogo', 'websiteTitle', 'websiteDescription',
+          'websiteAnnouncement', 'registrationEnabled', 'maintenanceMode',
+          'websiteNotificationsEnabled', 'updatedAt', 'updatedBy'
+        ]) &&
+        data.websiteName is string && data.websiteName.size() >= 1 && data.websiteName.size() <= 80 &&
+        (!('websiteLogo' in data) || (data.websiteLogo is string && data.websiteLogo.size() <= 500000)) &&
+        (!('websiteTitle' in data) || (data.websiteTitle is string && data.websiteTitle.size() <= 120)) &&
+        (!('websiteDescription' in data) || (data.websiteDescription is string && data.websiteDescription.size() <= 300)) &&
+        (!('websiteAnnouncement' in data) || (data.websiteAnnouncement is string && data.websiteAnnouncement.size() <= 500)) &&
+        data.registrationEnabled is bool &&
+        data.maintenanceMode is bool &&
+        data.websiteNotificationsEnabled is bool &&
+        data.updatedAt == request.time &&
+        (!('updatedBy' in data) || (data.updatedBy is string && data.updatedBy.size() <= 128));
+    }
+
+    function isValidUserAccount(data) {
+      return data.keys().hasAll(['uid', 'username', 'role', 'basicCredits', 'premiumCredits', 'maxGroups', 'blocked', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'username', 'role', 'basicCredits', 'premiumCredits', 'walletBalance', 'maxGroups', 'blocked', 'language', 'createdAt', 'updatedAt']) &&
+        data.uid is string && isValidId(data.uid) &&
+        data.username is string && data.username.size() >= 3 && data.username.size() <= 20 && data.username.matches('^[a-z0-9_]+$') &&
+        data.role is string && data.role in ['user', 'admin'] &&
+        data.basicCredits is number && data.basicCredits >= 0 &&
+        data.premiumCredits is number && data.premiumCredits >= 0 &&
+        (!('walletBalance' in data) || (data.walletBalance is number && data.walletBalance >= 0)) &&
+        data.maxGroups is number && data.maxGroups >= 1 &&
+        data.blocked is bool &&
+        (!('language' in data) || (data.language is string && data.language.size() <= 10)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidUserPrivateProfile(data) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'updatedAt']) &&
+        data.uid is string && isValidId(data.uid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'role', 'createdAt']) &&
+        data.uid is string && isValidId(data.uid) &&
+        data.email is string && data.email.size() <= 254 &&
+        data.role in ['superadmin', 'admin'] &&
+        data.createdAt == request.time;
+    }
+
+    function isValidGroupRecord(data) {
+      return data.keys().hasAll(['groupId', 'userId', 'clanId', 'region', 'tier', 'status', 'archived', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'groupId', 'userId', 'username', 'clanId', 'region', 'regionName',
+          'tier', 'status', 'containerCount', 'runningCount', 'gloryFarmed',
+          'uptime', 'archived', 'createdAt', 'updatedAt'
+        ]) &&
+        data.groupId is string && isValidId(data.groupId) &&
+        data.userId is string && isValidId(data.userId) &&
+        (!('username' in data) || (data.username is string && data.username.size() <= 30)) &&
+        data.clanId is string && data.clanId.size() >= 1 && data.clanId.size() <= 40 && data.clanId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.region is string && data.region.size() >= 1 && data.region.size() <= 20 &&
+        (!('regionName' in data) || (data.regionName is string && data.regionName.size() <= 60)) &&
+        data.tier in ['basic', 'premium'] &&
+        data.status in ['running', 'stopped', 'archived', 'deleted', 'refunded'] &&
+        (!('containerCount' in data) || data.containerCount is number) &&
+        (!('runningCount' in data) || data.runningCount is number) &&
+        (!('gloryFarmed' in data) || data.gloryFarmed is number) &&
+        (!('uptime' in data) || (data.uptime is string && data.uptime.size() <= 60)) &&
+        data.archived is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidTransactionRecord(data) {
+      return data.keys().hasAll(['transactionId', 'userId', 'type', 'basicCredits', 'premiumCredits', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'transactionId', 'userId', 'username', 'orderId', 'type',
+          'basicCredits', 'premiumCredits', 'status', 'details', 'createdAt', 'updatedAt'
+        ]) &&
+        data.transactionId is string && isValidId(data.transactionId) &&
+        data.userId is string && isValidId(data.userId) &&
+        (!('username' in data) || (data.username is string && data.username.size() <= 30)) &&
+        (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 64)) &&
+        data.type in ['purchase', 'deduction', 'refund', 'coupon_redeem', 'coupon_create', 'coupon_cancel', 'admin_add', 'admin_deduct', 'admin_set', 'deposit', 'wallet_spend'] &&
+        data.basicCredits is number &&
+        data.premiumCredits is number &&
+        data.status in ['pending', 'approved', 'completed', 'cancelled', 'failed'] &&
+        (!('details' in data) || (data.details is string && data.details.size() <= 300)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidDepositRecord(data) {
+      return data.keys().hasAll(['orderId', 'userId', 'amount', 'currency', 'status', 'credited', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'orderId', 'userId', 'username', 'amount', 'currency',
+          'status', 'credited', 'creditedAt', 'upiId', 'createdAt', 'updatedAt'
+        ]) &&
+        data.orderId is string && isValidId(data.orderId) &&
+        data.userId is string && isValidId(data.userId) &&
+        (!('username' in data) || (data.username is string && data.username.size() <= 30)) &&
+        data.amount is number && data.amount >= 1 && data.amount <= 100000 &&
+        data.currency == 'INR' &&
+        data.status in ['active', 'paid', 'expired', 'failed'] &&
+        data.credited is bool &&
+        (!('creditedAt' in data) || (data.creditedAt is string && data.creditedAt.size() <= 64)) &&
+        (!('upiId' in data) || (data.upiId is string && data.upiId.size() <= 128)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidCouponRecord(data) {
+      return data.keys().hasAll(['code', 'basicCredits', 'premiumCredits', 'status', 'createdByUid', 'usageLimit', 'usedCount', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'code', 'basicCredits', 'premiumCredits', 'status', 'createdByUid',
+          'createdByUsername', 'redeemedByUid', 'redeemedByUsername',
+          'usageLimit', 'usedCount', 'expiresAt', 'createdAt', 'updatedAt'
+        ]) &&
+        data.code is string && data.code.size() >= 4 && data.code.size() <= 32 && data.code.matches('^[A-Z0-9\\-]+$') &&
+        data.basicCredits is number && data.basicCredits >= 0 && data.basicCredits <= 1000 &&
+        data.premiumCredits is number && data.premiumCredits >= 0 && data.premiumCredits <= 1000 &&
+        data.status in ['active', 'redeemed', 'cancelled', 'disabled', 'expired'] &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        (!('createdByUsername' in data) || (data.createdByUsername is string && data.createdByUsername.size() <= 30)) &&
+        (!('redeemedByUid' in data) || (data.redeemedByUid is string && data.redeemedByUid.size() <= 128)) &&
+        (!('redeemedByUsername' in data) || (data.redeemedByUsername is string && data.redeemedByUsername.size() <= 30)) &&
+        data.usageLimit is number && data.usageLimit >= 1 &&
+        data.usedCount is number && data.usedCount >= 0 &&
+        (!('expiresAt' in data) || (data.expiresAt is string && data.expiresAt.size() <= 64)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidActivityLogRecord(data) {
+      return data.keys().hasAll(['userId', 'action', 'details', 'createdAt']) &&
+        data.keys().hasOnly(['userId', 'groupId', 'clanId', 'region', 'action', 'details', 'runtimeLabel', 'createdAt']) &&
+        data.userId is string && isValidId(data.userId) &&
+        (!('groupId' in data) || (data.groupId is string && data.groupId.size() <= 128)) &&
+        (!('clanId' in data) || (data.clanId is string && data.clanId.size() <= 40)) &&
+        (!('region' in data) || (data.region is string && data.region.size() <= 40)) &&
+        data.action in ['start', 'stop', 'delete', 'restart', 'refund', 'replace', 'credit_add', 'credit_deduct'] &&
+        data.details is string && data.details.size() <= 500 &&
+        (!('runtimeLabel' in data) || (data.runtimeLabel is string && data.runtimeLabel.size() <= 60)) &&
+        data.createdAt == request.time;
+    }
+
+    function isValidApiLogRecord(data) {
+      return data.keys().hasAll(['endpoint', 'method', 'statusCode', 'success', 'createdAt']) &&
+        data.keys().hasOnly(['endpoint', 'method', 'statusCode', 'success', 'latencyMs', 'message', 'createdAt']) &&
+        data.endpoint is string && data.endpoint.size() <= 200 &&
+        data.method is string && data.method.size() <= 10 &&
+        data.statusCode is number &&
+        data.success is bool &&
+        (!('latencyMs' in data) || data.latencyMs is number) &&
+        (!('message' in data) || (data.message is string && data.message.size() <= 500)) &&
+        data.createdAt == request.time;
+    }
+
+    function isValidYouTubeVideo(data) {
+      return data.keys().hasAll(['id', 'videoId', 'url', 'title', 'thumbnailUrl', 'published', 'order', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'videoId', 'url', 'title', 'description',
+          'thumbnailUrl', 'channelTitle', 'published', 'order', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.videoId is string && data.videoId.size() >= 5 && data.videoId.size() <= 32 && data.videoId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.url is string && data.url.size() <= 300 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+        data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500 &&
+        (!('channelTitle' in data) || (data.channelTitle is string && data.channelTitle.size() <= 120)) &&
+        data.published is bool &&
+        data.order is number &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    // 1. Dynamic Website Settings (public read for branding, admin-only write)
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if false;
+      allow create, update: if isValidId(settingId) && isAdmin() && isValidSiteSettings(incoming());
+      allow delete: if false;
+    }
+
+    // 2. User Accounts + Isolated PII
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSuperAdminEmail();
+
+      allow create: if isValidId(userId) &&
+        isEmailVerified() &&
+        isOwner(userId) &&
+        isValidUserAccount(incoming()) &&
+        incoming().uid == request.auth.uid &&
+        incoming().role == 'user' &&
+        incoming().basicCredits == 0 &&
+        incoming().premiumCredits == 0 &&
+        (!('walletBalance' in incoming()) || incoming().walletBalance == 0) &&
+        incoming().blocked == false &&
+        incoming().createdAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isEmailVerified() &&
+        isValidUserAccount(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (
+            isOwner(userId) &&
+            incoming().role == existing().role &&
+            incoming().basicCredits == existing().basicCredits &&
+            incoming().premiumCredits == existing().premiumCredits &&
+            incoming().maxGroups == existing().maxGroups &&
+            incoming().blocked == existing().blocked &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['language', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if false;
+        allow create, update: if isValidId(userId) && isValidId(docId) &&
+          isEmailVerified() &&
+          (isOwner(userId) || isAdmin()) &&
+          isValidUserPrivateProfile(incoming()) &&
+          incoming().uid == userId;
+        allow delete: if isValidId(userId) && isValidId(docId) && isAdmin();
+      }
+    }
+
+    // 3. Admins Registry
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSuperAdminEmail();
+      allow create, update: if isValidId(userId) && isSuperAdminEmail() && isValidAdminRecord(incoming());
+      allow delete: if isValidId(userId) && isSuperAdminEmail() && userId != request.auth.uid;
+    }
+
+    // 4. Groups
+    match /groups/{groupId} {
+      allow get: if isValidId(groupId) && isEmailVerified() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isEmailVerified() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow create: if isValidId(groupId) &&
+        isEmailVerified() &&
+        isAdmin() &&
+        isValidGroupRecord(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if isValidId(groupId) &&
+        isEmailVerified() &&
+        isValidGroupRecord(incoming()) &&
+        incoming().groupId == existing().groupId &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid &&
+            existing().status != 'deleted' &&
+            existing().status != 'refunded' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['archived', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(groupId) && isAdmin();
+    }
+
+    // 5. Transactions
+    match /transactions/{transactionId} {
+      allow get: if isValidId(transactionId) && isEmailVerified() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isEmailVerified() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow create: if isValidId(transactionId) && isAdmin() && isValidTransactionRecord(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(transactionId) &&
+        isEmailVerified() &&
+        isValidTransactionRecord(incoming()) &&
+        incoming().transactionId == existing().transactionId &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt && (
+          isAdmin() ||
+          (
+            existing().userId == request.auth.uid &&
+            existing().status == 'pending' &&
+            incoming().status == 'cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
+    }
+
+    // 6. Coupons
+    match /coupons/{couponCode} {
+      allow get: if isValidId(couponCode) && isEmailVerified() && (
+        existing().createdByUid == request.auth.uid ||
+        existing().redeemedByUid == request.auth.uid ||
+        isAdmin()
+      );
+      allow list: if isEmailVerified() && (
+        resource.data.createdByUid == request.auth.uid ||
+        resource.data.redeemedByUid == request.auth.uid ||
+        isSuperAdminEmail()
+      );
+      allow create: if isValidId(couponCode) && isAdmin() && isValidCouponRecord(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(couponCode) && isAdmin() && isValidCouponRecord(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(couponCode) && isAdmin();
+    }
+
+    // 7. Activity Logs
+    match /activity_logs/{logId} {
+      allow get: if isValidId(logId) && isEmailVerified() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isEmailVerified() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow create: if isValidId(logId) && isAdmin() && isValidActivityLogRecord(incoming()) && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // 8. API Logs (Admin only)
+    match /api_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isSuperAdminEmail();
+      allow create: if isValidId(logId) && isAdmin() && isValidApiLogRecord(incoming()) && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // 9. Famwise Deposits (Server/Admin write only; owners can read their own)
+    match /deposits/{orderId} {
+      allow get: if isValidId(orderId) && isEmailVerified() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isEmailVerified() && (resource.data.userId == request.auth.uid || isSuperAdminEmail());
+      allow create: if isValidId(orderId) && isAdmin() && isValidDepositRecord(incoming()) && incoming().orderId == orderId && incoming().createdAt == request.time;
+      allow update: if isValidId(orderId) && isAdmin() && isValidDepositRecord(incoming()) && incoming().orderId == existing().orderId && incoming().userId == existing().userId && incoming().createdAt == existing().createdAt;
+      allow delete: if false;
+    }
+
+    // 10. YouTube Videos (Public read for published items, Admin write only)
+    match /youtube_videos/{videoDocId} {
+      allow get: if isValidId(videoDocId) && (existing().published == true || isAdmin());
+      allow list: if resource.data.published == true || isSuperAdminEmail();
+      allow create: if isValidId(videoDocId) && isAdmin() && isValidYouTubeVideo(incoming()) && incoming().id == videoDocId && incoming().createdAt == request.time;
+      allow update: if isValidId(videoDocId) && isAdmin() && isValidYouTubeVideo(incoming()) && incoming().id == existing().id && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(videoDocId) && isAdmin();
+    }
+  }
+}
